@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>补给性价比榜</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=Noto+Sans+SC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: field ledger, same family as the 314 tool. Controls as a requisition strip, the top pick as a stamped slip, the full ranking as a supply table. */
+:root {
+  --bg: #e9e6dc;
+  --panel: #f6f4ec;
+  --ink: #23251f;
+  --muted: #6b6c5f;
+  --line: #cfcabb;
+  --brass: #8d6a1f;
+  --brass-soft: #e7d9b4;
+  --good: #3d6b34;
+  --bad: #a3392b;
+  --good-soft: #dbe6d3;
+  --bad-soft: #f1d9d3;
+  --f-display: "Saira Condensed", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --f-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, "Noto Sans SC", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1d19; --panel: #23261f; --ink: #e6e3d6; --muted: #9a9a88; --line: #3a3d33;
+    --brass: #d2a94f; --brass-soft: #3b3220; --good: #8cc47a; --bad: #e47c69;
+    --good-soft: #243321; --bad-soft: #3a221d; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1d19; --panel: #23261f; --ink: #e6e3d6; --muted: #9a9a88; --line: #3a3d33;
+  --brass: #d2a94f; --brass-soft: #3b3220; --good: #8cc47a; --bad: #e47c69;
+  --good-soft: #243321; --bad-soft: #3a221d; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+[hidden] { display: none !important; }
+a { color: var(--brass); }
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.wrap > * { min-width: 0; }
+header { display: grid; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; color: var(--brass); }
+h1 { font-family: var(--f-display); font-weight: 900; font-size: clamp(32px, 6vw, 50px); line-height: 1.05; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--muted); max-width: 42em; margin: 0; }
+h2 { font-weight: 900; font-size: 20px; letter-spacing: .04em; margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+h2 small { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: .06em; font-weight: 400; }
+
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; color: var(--muted); margin-top: 4px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.status[data-s="ok"] .dot { background: var(--good); }
+.status[data-s="loading"] .dot { background: var(--brass); }
+.status[data-s="error"] .dot { background: var(--bad); }
+.status[data-s="error"] { color: var(--bad); }
+@media (prefers-reduced-motion: no-preference) { .status[data-s="loading"] .dot { animation: pulse 1s ease-in-out infinite; } }
+@keyframes pulse { 50% { opacity: .3; } }
+.btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); padding: 4px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--ink); }
+.btn:focus-visible, .seg button:focus-visible, select:focus-visible, .check input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 18px; align-items: start; }
+.group { display: grid; gap: 6px; min-width: 0; }
+.group > .lab { font-size: 13px; font-weight: 700; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--ink); }
+.seg button { font: inherit; font-size: 14px; font-weight: 700; padding: 7px 6px; border: 0; background: var(--panel); color: var(--ink); cursor: pointer; line-height: 1.3; }
+.seg button + button { border-left: 1px solid var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.srcbox { display: grid; gap: 6px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 17px; height: 17px; accent-color: var(--brass); flex: none; margin: 0; }
+.inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+select { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); padding: 4px 6px; }
+
+.pick { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 0; background: var(--panel); border: 1px solid var(--line); }
+@media (max-width: 720px) { .pick { grid-template-columns: minmax(0, 1fr); } }
+.pick-main { padding: 18px; display: grid; gap: 10px; background: var(--good-soft); border-right: 1px solid var(--line); min-width: 0; }
+@media (max-width: 720px) { .pick-main { border-right: 0; border-bottom: 1px solid var(--line); } }
+.pick-main .k { font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+.pick-item { display: flex; gap: 14px; align-items: center; min-width: 0; }
+.pick-item img { width: 64px; height: 64px; object-fit: contain; background: var(--bg); border: 1px solid var(--line); flex: none; }
+.pick-name { font-weight: 900; font-size: clamp(20px, 3.4vw, 26px); line-height: 1.25; min-width: 0; }
+.pick-name a { color: inherit; text-decoration: none; }
+.pick-name a:hover { text-decoration: underline; }
+.pick-big { font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 6vw, 44px); line-height: 1.05; color: var(--good); }
+.pick-big small { font-family: var(--f-body); font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.pick-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); font-family: var(--f-mono); }
+.pick-meta b { color: var(--ink); font-weight: 600; }
+.runners { padding: 14px 18px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.runners .k { font-size: 13px; color: var(--muted); letter-spacing: .08em; margin-bottom: 4px; }
+.runner { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dotted var(--line); min-width: 0; }
+.runner:last-child { border-bottom: 0; }
+.runner img { width: 32px; height: 32px; object-fit: contain; flex: none; }
+.runner .rn { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runner .rv { font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
+.empty { padding: 22px 18px; color: var(--muted); }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; background: var(--bg); position: sticky; top: 0; }
+th.l, td.l { text-align: left; }
+th.on { color: var(--ink); box-shadow: inset 0 -2px 0 var(--brass); }
+td { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+td.on { font-weight: 600; background: color-mix(in srgb, var(--brass-soft) 45%, transparent); }
+td.rank { color: var(--muted); width: 1%; }
+tr:first-child td.rank { color: var(--good); font-weight: 600; }
+.item { display: flex; align-items: center; gap: 10px; font-family: var(--f-body); white-space: normal; min-width: 200px; }
+.item img { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.item a { color: var(--ink); text-decoration: none; font-weight: 700; }
+.item a:hover { text-decoration: underline; color: var(--brass); }
+.neg { color: var(--bad); }
+.zero { color: var(--muted); }
+.chg { display: block; font-size: 11px; color: var(--muted); }
+.chg.up { color: var(--bad); }
+.chg.down { color: var(--good); }
+.chip { display: inline-block; font-family: var(--f-body); font-size: 12px; line-height: 1.4; padding: 1px 7px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); white-space: nowrap; }
+.chip.trader { border-color: var(--brass); color: var(--brass); }
+.chip.warn { border-color: var(--bad); color: var(--bad); }
+.chips { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
+.note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+
+.notes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+@media (max-width: 760px) { .notes { grid-template-columns: minmax(0, 1fr); } }
+.notes ul { padding-left: 18px; margin: 0; display: grid; gap: 6px; max-width: 40em; }
+footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">逃离塔科夫 · 食物与饮品 · 实时价格</div>
+    <h1>补给性价比榜</h1>
+    <p class="sub">现在花多少钱能买到最多的能量和水分？价格来自 tarkov.dev 对跳蚤市场和商人的扫描，每次打开页面都会自动更新。</p>
+    <div class="status" id="status" data-s="loading" role="status">
+      <span class="dot" aria-hidden="true"></span><span id="status-text">正在加载价格…</span>
+      <button type="button" class="btn" id="refresh">刷新价格</button>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="筛选">
+    <div class="group">
+      <span class="lab">游戏模式</span>
+      <div class="seg" role="group" aria-label="游戏模式" data-key="mode">
+        <button type="button" data-v="regular">PVP</button>
+        <button type="button" data-v="pve">PVE</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="lab">我需要</span>
+      <div class="seg" role="group" aria-label="我需要" data-key="need">
+        <button type="button" data-v="energy">能量</button>
+        <button type="button" data-v="hydration">水分</button>
+        <button type="button" data-v="both">都要</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="lab">排序方式</span>
+      <div class="seg" role="group" aria-label="排序方式" data-key="sort">
+        <button type="button" data-v="price">最省钱</button>
+        <button type="button" data-v="slot">最省空间</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="lab">类别</span>
+      <div class="seg" role="group" aria-label="类别" data-key="cat">
+        <button type="button" data-v="all">全部</button>
+        <button type="button" data-v="food">食物</button>
+        <button type="button" data-v="drink">饮品</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="lab">购买渠道</span>
+      <div class="srcbox">
+        <label class="check" for="src-flea"><input type="checkbox" id="src-flea"> 跳蚤市场（需 15 级）</label>
+        <div class="inline">
+          <label class="check" for="src-trader"><input type="checkbox" id="src-trader"> 商人，等级最高</label>
+          <select id="ll" aria-label="商人等级上限"><option value="1">1 级</option><option value="2">2 级</option><option value="3">3 级</option><option value="4">4 级</option></select>
+        </div>
+        <label class="check" for="src-task"><input type="checkbox" id="src-task"> 包含需要完成任务才解锁的商品</label>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-pick">
+    <h2 id="h-pick"><span id="pick-title">现在最划算</span> <small id="pick-sub"></small></h2>
+    <div class="pick" id="pick">
+      <div class="empty" id="pick-empty">正在加载价格…</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-tbl">
+    <h2 id="h-tbl">完整排名 <small id="tbl-sub"></small></h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col" class="l">物品</th>
+            <th scope="col" id="th-e">能量</th>
+            <th scope="col" id="th-h">水分</th>
+            <th scope="col">最低买价</th>
+            <th scope="col">渠道</th>
+            <th scope="col" id="th-cost">每点花费</th>
+            <th scope="col" id="th-slot">每格点数</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="note" id="excluded"></p>
+  </section>
+
+  <section class="notes" aria-labelledby="h-how">
+    <div>
+      <h2 id="h-how">怎么算的</h2>
+      <ul>
+        <li>能量和水分按吃完或喝完整个物品计算。</li>
+        <li>选「都要」时，能量和水分直接相加。负数会扣分，比如饼干会减水分，在这个模式下就不太划算。</li>
+        <li>每点花费 = 最低买价 ÷ 点数，越低越好。每格点数 = 点数 ÷ 占用格子数，越高越省背包空间。</li>
+        <li>最低买价从你勾选的渠道里取最便宜的那个：跳蚤市场当前最低挂单，或者你商人等级能买到的商人价。</li>
+      </ul>
+    </div>
+    <div>
+      <h2>注意</h2>
+      <ul>
+        <li>价格由 tarkov.dev 定时扫描，通常有几分钟延迟。标着「挂单少」的物品，价格可能很快就没了。</li>
+        <li>商人商品每次刷新都有限购数量，表格里写着「限购」的就是每次能买几个。</li>
+        <li>点物品名称可以打开 eftarkov.com 的中文资料页。</li>
+        <li>你的筛选设置和最近一次价格会保存在你自己的浏览器里，下次打开先显示上次的结果，再自动更新。</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>数据来源：<a href="https://tarkov.dev" target="_blank" rel="noopener">tarkov.dev</a>（社区开源项目）。图标版权归 Battlestate Games 所有。数值仅供参考。</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const PREF_KEY = "tkv-food-pref-v1";
+  const CACHE_KEY = "tkv-food-cache-v1:";
+  const FRESH_MS = 5 * 60 * 1000;
+  const CAT_FOOD = "5448e8d04bdc2ddf718b4569";
+  const CAT_DRINK = "5448e8d64bdc2dce718b4568";
+  const $ = id => document.getElementById(id);
+
+  const state = { mode: "regular", need: "both", sort: "price", cat: "all", flea: true, trader: true, ll: 4, task: false };
+  try { Object.assign(state, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); } catch (e) {}
+  const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(state)); } catch (e) {} };
+
+  let data = null;
+  let ctrl = null;
+
+  const fmt = n => Math.round(n).toLocaleString("en-US") + " ₽";
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const needLabel = () => ({ energy: "能量", hydration: "水分", both: "能量+水分" }[state.need]);
+
+  // ---------- data ----------
+  async function getJSON(url, signal) {
+    const r = await fetch(url, { signal });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    if (!j || !j.data) throw new Error("数据格式不对");
+    return j.data;
+  }
+
+  function slim(mode, raw, zh, trZh, taskZh) {
+    const items = [];
+    let scan = 0;
+    for (const it of Object.values(raw.items)) {
+      const p = it.properties;
+      if (!p || p.propertiesType !== "ItemPropertiesFoodDrink") continue;
+      const cats = it.categories || [];
+      const cat = cats.includes(CAT_DRINK) ? "drink" : cats.includes(CAT_FOOD) ? "food" : "other";
+      const t = Date.parse(it.lastScan || it.updated || 0) || 0;
+      if (t > scan) scan = t;
+      const nm = zh[it.id + " Name"];
+      items.push({
+        id: it.id,
+        name: nm && !/ Name$/.test(nm) ? nm : (it.normalizedName || it.id),
+        icon: it.iconLink || "",
+        cat,
+        w: it.width || 1, h: it.height || 1,
+        energy: p.energy || 0, hydration: p.hydration || 0,
+        flea: it.lastLowPrice || 0,
+        avg: it.avg24hPrice || 0,
+        offers: it.lastOfferCount || 0,
+        chg: typeof it.changeLast48hPercent === "number" ? it.changeLast48hPercent : null,
+        traders: (it.buyFromTrader || []).filter(b => b.priceRUB > 0).map(b => ({
+          name: trZh[b.trader + " Nickname"] || b.trader,
+          ll: b.minTraderLevel || 1,
+          price: b.priceRUB,
+          limit: b.buyLimit || 0,
+          task: !!b.taskUnlock,
+          taskName: b.taskUnlock ? (taskZh[b.taskUnlock + " name"] || "任务") : ""
+        }))
+      });
+    }
+    return { mode, fetchedAt: Date.now(), scanAt: scan, items };
+  }
+
+  function readCache(mode) {
+    try { const c = JSON.parse(localStorage.getItem(CACHE_KEY + mode) || "null"); return c && c.items && c.items.length ? c : null; } catch (e) { return null; }
+  }
+  function writeCache(d) {
+    try { localStorage.setItem(CACHE_KEY + d.mode, JSON.stringify(d)); } catch (e) {}
+  }
+
+  async function load(force) {
+    const mode = state.mode;
+    if (ctrl) ctrl.abort();
+    const cached = readCache(mode);
+    if (cached) {
+      data = cached; render();
+      if (!force && Date.now() - cached.fetchedAt < FRESH_MS) { setStatus("ok"); return; }
+    } else {
+      data = null; render();
+    }
+    ctrl = new AbortController();
+    const signal = ctrl.signal;
+    setStatus("loading", cached ? "正在更新价格（先显示上次的结果）…" : "正在加载价格，第一次打开需要几秒…");
+    const base = "https://json.tarkov.dev/" + mode + "/";
+    try {
+      const [raw, zh, trZh, taskZh] = await Promise.all([
+        getJSON(base + "items", signal),
+        getJSON(base + "items_zh", signal).catch(() => getJSON("https://json.tarkov.dev/regular/items_zh", signal)),
+        getJSON(base + "traders_zh", signal).catch(() => ({})),
+        getJSON(base + "tasks_zh", signal).catch(() => ({}))
+      ]);
+      if (signal.aborted || mode !== state.mode) return;
+      data = slim(mode, raw, zh, trZh, taskZh);
+      writeCache(data);
+      render();
+      setStatus("ok");
+    } catch (e) {
+      if (signal.aborted) return;
+      setStatus("error", (data ? "价格更新失败，下面是上次保存的结果。" : "价格加载失败。") + "可能是 tarkov.dev 暂时不可用，稍后点「刷新价格」再试。");
+    }
+  }
+
+  function ago(ms) {
+    const m = Math.round((Date.now() - ms) / 60000);
+    if (m < 1) return "刚刚";
+    if (m < 60) return m + " 分钟前";
+    const h = Math.round(m / 60);
+    if (h < 48) return h + " 小时前";
+    return Math.round(h / 24) + " 天前";
+  }
+  function setStatus(s, text) {
+    $("status").dataset.s = s;
+    if (s === "ok" && data) {
+      const t = new Date(data.scanAt || data.fetchedAt);
+      const hh = String(t.getHours()).padStart(2, "0"), mm = String(t.getMinutes()).padStart(2, "0");
+      text = (data.mode === "pve" ? "PVE" : "PVP") + " 价格，tarkov.dev 扫描于 " + hh + ":" + mm + "（" + ago(data.scanAt || data.fetchedAt) + "）";
+    }
+    $("status-text").textContent = text || "";
+    $("refresh").disabled = s === "loading";
+  }
+
+  // ---------- ranking ----------
+  function rank() {
+    const rows = [];
+    let noPts = 0, noSrc = 0;
+    for (const it of data.items) {
+      if (it.cat === "other") continue;
+      if (state.cat !== "all" && it.cat !== state.cat) continue;
+      const pts = state.need === "energy" ? it.energy : state.need === "hydration" ? it.hydration : it.energy + it.hydration;
+      if (pts <= 0) { noPts++; continue; }
+      const offers = [];
+      if (state.flea && it.flea > 0) offers.push({ src: "flea", price: it.flea, offers: it.offers });
+      if (state.trader) for (const t of it.traders) {
+        if (t.ll > state.ll) continue;
+        if (t.task && !state.task) continue;
+        offers.push({ src: "trader", price: t.price, name: t.name, ll: t.ll, limit: t.limit, taskName: t.taskName });
+      }
+      if (!offers.length) { noSrc++; continue; }
+      offers.sort((a, b) => a.price - b.price);
+      const slots = it.w * it.h;
+      rows.push(Object.assign({}, it, { pts, best: offers[0], cost: offers[0].price / pts, perSlot: pts / slots, slots }));
+    }
+    rows.sort(state.sort === "slot" ? (a, b) => b.perSlot - a.perSlot || a.cost - b.cost : (a, b) => a.cost - b.cost);
+    return { rows, noPts, noSrc };
+  }
+
+  function srcChips(b, it) {
+    let h = "";
+    if (b.src === "flea") {
+      h += '<span class="chip">跳蚤市场</span>';
+      if (b.offers > 0 && b.offers < 5) h += '<span class="chip warn">挂单少</span>';
+    } else {
+      h += '<span class="chip trader">' + esc(b.name) + " " + b.ll + "级</span>";
+      if (b.limit) h += '<span class="chip">限购 ' + b.limit + "</span>";
+      if (b.taskName) h += '<span class="chip" title="' + esc(b.taskName) + '">需任务</span>';
+    }
+    return '<span class="chips">' + h + "</span>";
+  }
+  const link = it => "https://www.eftarkov.com/item/" + encodeURIComponent(it.id);
+  const img = (it, size) => it.icon ? '<img src="' + esc(it.icon) + '" alt="" width="' + size + '" height="' + size + '" loading="lazy" decoding="async">' : "";
+  const num = v => v < 0 ? '<span class="neg">' + v + "</span>" : v === 0 ? '<span class="zero">0</span>' : String(v);
+  const costTxt = r => fmt(r.cost) + " / 点";
+  const slotTxt = r => (Math.round(r.perSlot * 10) / 10) + " 点/格";
+
+  function render() {
+    // controls
+    document.querySelectorAll(".seg").forEach(seg => {
+      const k = seg.dataset.key;
+      seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state[k])));
+    });
+    $("src-flea").checked = state.flea;
+    $("src-trader").checked = state.trader;
+    $("src-task").checked = state.task;
+    $("ll").value = String(state.ll);
+    $("ll").disabled = !state.trader;
+    $("src-task").disabled = !state.trader;
+    $("th-cost").className = state.sort === "price" ? "on" : "";
+    $("th-slot").className = state.sort === "slot" ? "on" : "";
+
+    const pick = $("pick");
+    const tbody = $("tbody");
+    if (!data) {
+      pick.innerHTML = '<div class="empty">正在加载价格…</div>';
+      tbody.innerHTML = "";
+      $("excluded").textContent = "";
+      $("tbl-sub").textContent = "";
+      $("pick-sub").textContent = "";
+      return;
+    }
+
+    const { rows, noPts, noSrc } = rank();
+    const unit = needLabel();
+    $("pick-title").textContent = state.sort === "slot" ? "现在最省空间" : "现在最划算";
+    $("pick-sub").textContent = "按" + unit + "计算";
+    $("tbl-sub").textContent = rows.length + " 种物品";
+
+    if (!state.flea && !state.trader) {
+      pick.innerHTML = '<div class="empty">至少勾选一个购买渠道：跳蚤市场或商人。</div>';
+      tbody.innerHTML = "";
+      $("excluded").textContent = "";
+      return;
+    }
+    if (!rows.length) {
+      pick.innerHTML = '<div class="empty">当前筛选条件下没有能买到的物品。试试放宽商人等级或勾选跳蚤市场。</div>';
+      tbody.innerHTML = "";
+    } else {
+      const r = rows[0];
+      const big = state.sort === "slot"
+        ? (Math.round(r.perSlot * 10) / 10) + '<small>点' + unit + " / 格</small>"
+        : fmt(r.cost) + "<small>买 1 点" + unit + "</small>";
+      const main =
+        '<div class="pick-main">' +
+          '<div class="pick-item">' + img(r, 64) +
+            '<div class="pick-name"><a href="' + link(r) + '" target="_blank" rel="noopener">' + esc(r.name) + "</a></div>" +
+          "</div>" +
+          '<div class="pick-big">' + big + "</div>" +
+          '<div class="pick-meta">' +
+            "<span>价格 <b>" + fmt(r.best.price) + "</b></span>" +
+            "<span>能量 <b>" + r.energy + "</b></span>" +
+            "<span>水分 <b>" + r.hydration + "</b></span>" +
+            "<span>占 <b>" + r.slots + "</b> 格</span>" +
+          "</div>" +
+          srcChips(r.best, r) +
+        "</div>";
+      let side = '<div class="runners"><div class="k">其次</div>';
+      rows.slice(1, 5).forEach(x => {
+        side += '<div class="runner">' + img(x, 32) + '<span class="rn">' + esc(x.name) + '</span><span class="rv">' + (state.sort === "slot" ? slotTxt(x) : costTxt(x)) + "</span></div>";
+      });
+      if (rows.length < 2) side += '<div class="runner"><span class="rn" style="font-weight:400;color:var(--muted)">没有其他符合条件的物品</span></div>';
+      side += "</div>";
+      pick.innerHTML = main + side;
+
+      let html = "";
+      rows.forEach((x, i) => {
+        let chg = "";
+        if (x.best.src === "flea" && x.chg !== null && Math.abs(x.chg) >= 1) {
+          chg = '<span class="chg ' + (x.chg > 0 ? "up" : "down") + '">48小时 ' + (x.chg > 0 ? "↑" : "↓") + Math.abs(Math.round(x.chg)) + "%</span>";
+        }
+        html += "<tr>" +
+          '<td class="rank">' + (i + 1) + "</td>" +
+          '<td class="l"><span class="item">' + img(x, 36) + '<a href="' + link(x) + '" target="_blank" rel="noopener">' + esc(x.name) + "</a></span></td>" +
+          "<td>" + num(x.energy) + "</td>" +
+          "<td>" + num(x.hydration) + "</td>" +
+          "<td>" + fmt(x.best.price) + chg + "</td>" +
+          "<td>" + srcChips(x.best, x) + "</td>" +
+          '<td class="' + (state.sort === "price" ? "on" : "") + '">' + costTxt(x) + "</td>" +
+          '<td class="' + (state.sort === "slot" ? "on" : "") + '">' + slotTxt(x) + "</td>" +
+          "</tr>";
+      });
+      tbody.innerHTML = html;
+    }
+    const parts = [];
+    if (noPts) parts.push(noPts + " 种物品不提供" + (state.need === "both" ? "净能量和水分" : unit) + "，没有列出");
+    if (noSrc) parts.push(noSrc + " 种物品在你勾选的渠道里买不到");
+    $("excluded").textContent = parts.length ? parts.join("；") + "。" : "";
+  }
+
+  // ---------- events ----------
+  document.querySelectorAll(".seg").forEach(seg => {
+    seg.addEventListener("click", e => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const k = seg.dataset.key;
+      if (state[k] === b.dataset.v) return;
+      state[k] = b.dataset.v;
+      savePrefs();
+      if (k === "mode") load(false); else render();
+    });
+  });
+  $("src-flea").addEventListener("change", e => { state.flea = e.target.checked; savePrefs(); render(); });
+  $("src-trader").addEventListener("change", e => { state.trader = e.target.checked; savePrefs(); render(); });
+  $("src-task").addEventListener("change", e => { state.task = e.target.checked; savePrefs(); render(); });
+  $("ll").addEventListener("change", e => { state.ll = +e.target.value; savePrefs(); render(); });
+  $("refresh").addEventListener("click", () => load(true));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && data && Date.now() - data.fetchedAt > FRESH_MS) load(false);
+  });
+  setInterval(() => { if ($("status").dataset.s === "ok") setStatus("ok"); }, 60000);
+
+  render();
+  load(false);
+})();
+</script>
+</body>
+</html>
